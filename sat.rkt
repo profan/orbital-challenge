@@ -82,7 +82,7 @@
   (define adj-lon (* lon (/ pi 180)))
   (define adj-r (+ r h))
   (vector
-   (* (- adj-r) (cos adj-lat) (cos lon))
+   (* (- adj-r) (cos adj-lat) (cos adj-lon))
    (* adj-r (sin adj-lat))
    (* adj-r (cos adj-lat) (sin adj-lon))))
 
@@ -106,24 +106,38 @@
          (match values
            [(list seed) seed]
            [(list name latitude longitude height) (satelite name (string->number latitude) (string->number longitude) (string->number height) '())]
-           [(list "ROUTE" lat1 lon1 lat2 lon2) '(((string->number lat1) (string->number lon1)) ((string->number lat2) (string->number lon2)))]))
+           [(list "ROUTE" lat1 lon1 lat2 lon2) (list (cons (string->number lat1) (string->number lon1)) (cons (string->number lat2) (string->number lon2)))]))
        in))))
+
+(define *earth-radius* 6371)
+(define *earth-sphere* (sphere (vector 0 0 0) *earth-radius*))
 
 (define satelite-plot-points
    (for/list ([e satelite-points] #:when (satelite? e))
-     (lat-lon-to-coords 6371 (satelite-latitude e) (satelite-longitude e) (satelite-height e))))
+     (cons (satelite-name e) (lat-lon-to-coords *earth-radius* (satelite-latitude e) (satelite-longitude e) (satelite-height e)))))
 
-(define earth-radius 6371)
+(define satelite-plot-connections
+  (for/list ([e satelite-plot-points])
+    (for/list ([os satelite-plot-points]
+               #:when (not (line-seg-intersects-sphere? (line-seg (cdr e) (cdr os)) *earth-sphere*)))
+      (list (cdr e) (cdr os)))))
 
 (plot3d
  (list
   (isosurface3d
    (lambda (x y z)
      (sqrt (+ (sqr x) (sqr y) (sqr z))))
-   earth-radius (- earth-radius) earth-radius (- earth-radius) earth-radius (- earth-radius) earth-radius)
+   *earth-radius* (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius*)
   (map
-   (lambda (v) (point-label3d (vector-unpack v)))
-   satelite-plot-points))
+   (lambda (v) (point-label3d (vector-unpack (cdr v)) (car v)))
+   satelite-plot-points)
+  (map
+   (lambda (v)
+     (flatten (for/list ([l v])
+       (match l
+         [(list (struct vector (x1 y1 z1)) (struct vector (x2 y2 z2)))
+          (lines3d (list (list x1 y1 z1) (list x2 y2 z2)))]))))
+   satelite-plot-connections))
  #:altitude 25)
 
 (displayln (line-seg-intersects-sphere? test-segment test-sphere))
