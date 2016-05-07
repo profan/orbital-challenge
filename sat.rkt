@@ -1,12 +1,15 @@
 #lang racket
 
+(require plot)
+(require csv-reading)
+
 ; primitives for calculations
 (struct vector (x y z))
 (struct line-seg (start end))
 (struct sphere (position radius))
 
 ; satelite keeps list of other satelites it is connected to
-(struct satelite (conns))
+(struct satelite (name longitude latitude height conns))
 
 (define (vector-op op v1 v2)
   (vector
@@ -26,6 +29,12 @@
     (sqr (vector-x v))
     (sqr (vector-y v))
     (sqr (vector-y v)))))
+
+(define (vector-unpack v)
+  (list
+   (vector-x v)
+   (vector-y v)
+   (vector-z v)))
 
 (define (distance-3d p1 p2)
   (sqrt (+
@@ -58,7 +67,6 @@
       (vector-unop
        (lambda (v) (* frac-of-line))
        (vector-op - (line-seg-end l) (line-seg-start l))))]))
-  
 
 (define (line-seg-intersects-sphere? l sph)
   (define closest-point (closest-point-on-line-seg l (sphere-position sph)))
@@ -68,6 +76,14 @@
 
 (define (point-in-sphere? p sph)
   (<= (distance-3d (sphere-position sph) p) (sphere-radius sph)))
+
+(define (lat-lon-to-coords r lat lon)
+  (define adj-lat (* lat (/ pi 180)))
+  (define adj-lon (* lon (/ pi 180)))
+  (vector
+   (* (- r) (cos adj-lat) (cos lon))
+   (* r (sin adj-lat))
+   (* r (cos adj-lat) (sin adj-lon))))
 
 (define (connect-satelites sats)
   sats)
@@ -80,5 +96,35 @@
 
 (define test-sphere (sphere (vector 0 0 0) 12))
 (define test-segment (line-seg (vector -4 -4 -4) (vector 12 12 12)))
+
+(define satelite-points
+  (call-with-input-file "data.csv"
+    (lambda (in)
+      (csv-map
+       (lambda (values)
+         (match values
+           [(list seed) seed]
+           [(list name latitude longitude height) (satelite name (string->number latitude) (string->number longitude) (string->number height) '())]
+           [(list "ROUTE" lat1 lon1 lat2 lon2) '(((string->number lat1) (string->number lon1)) ((string->number lat2) (string->number lon2)))]))
+       in))))
+
+(define satelite-plot-points
+   (for/list ([e satelite-points] #:when (satelite? e))
+     (lat-lon-to-coords 6371 (satelite-latitude e) (satelite-longitude e))))
+
+(define earth-radius 6371)
+
+(plot3d
+ (list
+  (isosurface3d
+   (lambda (x y z)
+     (sqrt (+ (sqr x) (sqr y) (sqr z))))
+   earth-radius (- earth-radius) earth-radius (- earth-radius) earth-radius (- earth-radius) earth-radius)
+  (map
+   (lambda (v) (point-label3d (vector-unpack v)))
+   satelite-plot-points))
+ #:altitude 25)
+
 (displayln (line-seg-intersects-sphere? test-segment test-sphere))
+(displayln satelite-points)
 (displayln "Hello, World!")
