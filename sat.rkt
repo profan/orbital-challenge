@@ -77,13 +77,14 @@
 (define (point-in-sphere? p sph)
   (<= (distance-3d (sphere-position sph) p) (sphere-radius sph)))
 
-(define (lat-lon-to-coords r lat lon)
+(define (lat-lon-to-coords r lat lon [h 0])
   (define adj-lat (* lat (/ pi 180)))
   (define adj-lon (* lon (/ pi 180)))
+  (define adj-r (+ r h))
   (vector
-   (* (- r) (cos adj-lat) (cos lon))
-   (* r (sin adj-lat))
-   (* r (cos adj-lat) (sin adj-lon))))
+   (* (- adj-r) (cos adj-lat) (cos lon))
+   (* adj-r (sin adj-lat))
+   (* adj-r (cos adj-lat) (sin adj-lon))))
 
 (define (connect-satelites sats)
   sats)
@@ -110,7 +111,7 @@
 
 (define satelite-plot-points
    (for/list ([e satelite-points] #:when (satelite? e))
-     (lat-lon-to-coords 6371 (satelite-latitude e) (satelite-longitude e))))
+     (lat-lon-to-coords 6371 (satelite-latitude e) (satelite-longitude e) (satelite-height e))))
 
 (define earth-radius 6371)
 
