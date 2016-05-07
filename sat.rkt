@@ -10,15 +10,15 @@
 
 (define (vector-op op v1 v2)
   (vector
-   (op vector-x v1 vector-x v2)
-   (op vector-y v1 vector-y v2)
-   (op vector-z v1 vector-z v2)))
+   (op (vector-x v1) (vector-x v2))
+   (op (vector-y v1) (vector-y v2))
+   (op (vector-z v1) (vector-z v2))))
 
 (define (vector-unop op v)
   (vector
-   (op vector-x v)
-   (op vector-y v)
-   (op vector-z v)))
+   (op (vector-x v))
+   (op (vector-y v))
+   (op (vector-z v))))
 
 (define (vector-len v)
   (sqrt
@@ -63,7 +63,7 @@
 (define (line-seg-intersects-sphere? l sph)
   (define closest-point (closest-point-on-line-seg l (sphere-position sph)))
   (match closest-point
-    [(vector x y z) (point-in-sphere? closest-point sph)]
+    [(struct vector (x y z)) (point-in-sphere? closest-point sph)]
     [#f #f]))
 
 (define (point-in-sphere? p sph)
@@ -78,4 +78,7 @@
 (define (route-call sat-map)
   '())
 
+(define test-sphere (sphere (vector 0 0 0) 12))
+(define test-segment (line-seg (vector -4 -4 -4) (vector 12 12 12)))
+(displayln (line-seg-intersects-sphere? test-segment test-sphere))
 (displayln "Hello, World!")
