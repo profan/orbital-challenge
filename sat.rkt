@@ -1,6 +1,7 @@
 #lang racket
 
 (require plot)
+(require graph)
 (require csv-reading)
 
 ; primitives for calculations
@@ -10,6 +11,8 @@
 
 ; satelite keeps list of other satelites it is connected to
 (struct satelite (name longitude latitude height conns))
+
+; FUNCTIONS
 
 (define (vector-op op v1 v2)
   (vector
@@ -94,11 +97,7 @@
 (define (route-call sat-map)
   '())
 
-(define test-sphere (sphere (vector 0 0 0) 5))
-(define test-segment (line-seg (vector -6 -6 -6) (vector 12 12 12)))
-(define test-segment2 (line-seg (vector -5 0 0) (vector 5 0 0)))
-(displayln (line-seg-intersects-sphere? test-segment test-sphere))
-(displayln (line-seg-intersects-sphere? test-segment2 test-sphere))
+; CALCULATIONS AND DEFINITIONS
 
 (define satelite-points
   (call-with-input-file "data.csv"
@@ -126,14 +125,15 @@
                #:when (and
                        (not (eqv? e os))
                        (not (line-seg-intersects-sphere? (line-seg (cdr e) (cdr os)) *earth-sphere*))))
-      (list (cdr e) (cdr os)))))
+      (cons (cdr e) (cdr os)))))
 
 (plot3d
  (list
   (isosurface3d
    (lambda (x y z)
     (sqrt (+ (sqr x) (sqr y) (sqr z)))) *earth-radius*
-   (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius*)
+   (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius*
+   #:alpha 0.25)
   (map
    (lambda (v) (point-label3d (vector-unpack (cdr v)) (car v)))
    satelite-plot-points)
@@ -141,10 +141,8 @@
    (lambda (v)
      (flatten (for/list ([l v])
        (match l
-         [(list (struct vector (x1 y1 z1)) (struct vector (x2 y2 z2)))
+         [(cons (struct vector (x1 y1 z1)) (struct vector (x2 y2 z2)))
           (lines3d (list (list x1 y1 z1) (list x2 y2 z2)))]))))
    satelite-plot-connections)))
+ #:title (car satelite-points)
  #:altitude 25)
-
-(displayln satelite-points)
-(displayln "Hello, World!")
