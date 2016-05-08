@@ -4,12 +4,11 @@
 (require graph)
 (require csv-reading)
 
-; primitives for calculations
+; STRUCTURES
+
 (struct vector (x y z))
 (struct line-seg (start end))
 (struct sphere (position radius))
-
-; satelite keeps list of other satelites it is connected to
 (struct satelite (name longitude latitude height conns))
 
 ; FUNCTIONS
@@ -112,13 +111,16 @@
             (list (cons (string->number lat1) (string->number lon1)) (cons (string->number lat2) (string->number lon2)))]))
        in))))
 
+; geocentric coordinates, (0 0 0) is defined as the centroid of earth
 (define *earth-radius* 6371)
 (define *earth-sphere* (sphere (vector 0 0 0) *earth-radius*))
 
+; generate pairs of satelite name and position for drawing
 (define satelite-plot-points
    (for/list ([e satelite-points] #:when (satelite? e))
      (cons (satelite-name e) (lat-lon-to-coords *earth-radius* (satelite-latitude e) (satelite-longitude e) (* (satelite-height e) 2)))))
 
+; generate pairs of lines for satelites which can communicate
 (define satelite-plot-connections
   (for/list ([e satelite-plot-points])
     (for/list ([os satelite-plot-points]
@@ -129,14 +131,17 @@
 
 (plot3d
  (list
+  ; draw earth sphere
   (isosurface3d
    (lambda (x y z)
     (sqrt (+ (sqr x) (sqr y) (sqr z)))) *earth-radius*
    (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius*
    #:alpha 0.25)
+  ; draw points for satelites, with labels for the names
   (map
    (lambda (v) (point-label3d (vector-unpack (cdr v)) (car v)))
    satelite-plot-points)
+  ; draw the lines visualizing which satelites have line of sight and can communicate
   (flatten (map
    (lambda (v)
      (flatten (for/list ([l v])
