@@ -58,14 +58,13 @@
   (define vec-len (vector-sqlen vec-diff))
   (define line-to-point (vector-op - v (line-seg-start l)))
   (define frac-of-line (/ (dot-product vec-diff line-to-point) vec-len))
-  (displayln frac-of-line)
   (cond
     [(or (< frac-of-line 0) (> frac-of-line 1)) #f]
     [else
      (vector-op
       + (line-seg-start l)
       (vector-unop
-       (lambda (v) (* frac-of-line))
+       (lambda (v) (* frac-of-line v))
        (vector-op - (line-seg-end l) (line-seg-start l))))]))
 
 (define (line-seg-intersects-sphere? l sph)
@@ -75,7 +74,7 @@
     [#f #f]))
 
 (define (point-in-sphere? p sph)
-  (< (distance-3d (sphere-position sph) p) (sphere-radius sph)))
+  (<= (distance-3d p (sphere-position sph)) (sphere-radius sph)))
 
 (define (lat-lon-to-coords r lat lon [h 0])
   (define adj-lat (* lat (/ pi 180)))
@@ -108,8 +107,10 @@
        (lambda (values)
          (match values
            [(list seed) seed]
-           [(list name latitude longitude height) (satelite name (string->number latitude) (string->number longitude) (string->number height) '())]
-           [(list "ROUTE" lat1 lon1 lat2 lon2) (list (cons (string->number lat1) (string->number lon1)) (cons (string->number lat2) (string->number lon2)))]))
+           [(list name latitude longitude height)
+            (satelite name (string->number latitude) (string->number longitude) (string->number height) '())]
+           [(list "ROUTE" lat1 lon1 lat2 lon2)
+            (list (cons (string->number lat1) (string->number lon1)) (cons (string->number lat2) (string->number lon2)))]))
        in))))
 
 (define *earth-radius* 6371)
@@ -117,7 +118,7 @@
 
 (define satelite-plot-points
    (for/list ([e satelite-points] #:when (satelite? e))
-     (cons (satelite-name e) (lat-lon-to-coords *earth-radius* (satelite-latitude e) (satelite-longitude e) (satelite-height e)))))
+     (cons (satelite-name e) (lat-lon-to-coords *earth-radius* (satelite-latitude e) (satelite-longitude e) (* (satelite-height e) 2)))))
 
 (define satelite-plot-connections
   (for/list ([e satelite-plot-points])
@@ -131,18 +132,18 @@
  (list
   (isosurface3d
    (lambda (x y z)
-     (sqrt (+ (sqr x) (sqr y) (sqr z))))
-   *earth-radius* (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius*)
+    (sqrt (+ (sqr x) (sqr y) (sqr z)))) *earth-radius*
+   (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius*)
   (map
    (lambda (v) (point-label3d (vector-unpack (cdr v)) (car v)))
    satelite-plot-points)
-  (map
+  (flatten (map
    (lambda (v)
      (flatten (for/list ([l v])
        (match l
          [(list (struct vector (x1 y1 z1)) (struct vector (x2 y2 z2)))
           (lines3d (list (list x1 y1 z1) (list x2 y2 z2)))]))))
-   satelite-plot-connections))
+   satelite-plot-connections)))
  #:altitude 25)
 
 (displayln satelite-points)
