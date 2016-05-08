@@ -24,11 +24,13 @@
    (op (vector-z v))))
 
 (define (vector-len v)
-  (sqrt
-   (+
-    (sqr (vector-x v))
-    (sqr (vector-y v))
-    (sqr (vector-y v)))))
+  (sqrt (vector-sqlen v)))
+
+(define (vector-sqlen v)
+  (+
+   (sqr (vector-x v))
+   (sqr (vector-y v))
+   (sqr (vector-z v))))
 
 (define (vector-unpack v)
   (list
@@ -48,19 +50,17 @@
    (* (vector-y v1) (vector-y v2))
    (* (vector-z v1) (vector-z v2))))
 
-(define (line-seg-intersection l1 l2)
-  '(0 0 0))
-
 (define (line-seg-length l)
   (distance-3d (line-seg-start l) (line-seg-end l)))
 
 (define (closest-point-on-line-seg l v)
   (define vec-diff (vector-op - (line-seg-end l) (line-seg-start l)))
-  (define vec-len (vector-len vec-diff))
+  (define vec-len (vector-sqlen vec-diff))
   (define line-to-point (vector-op - v (line-seg-start l)))
   (define frac-of-line (/ (dot-product vec-diff line-to-point) vec-len))
+  (displayln frac-of-line)
   (cond
-    [(> 1 frac-of-line 0) #f]
+    [(or (< frac-of-line 0) (> frac-of-line 1)) #f]
     [else
      (vector-op
       + (line-seg-start l)
@@ -75,7 +75,7 @@
     [#f #f]))
 
 (define (point-in-sphere? p sph)
-  (<= (distance-3d (sphere-position sph) p) (sphere-radius sph)))
+  (< (distance-3d (sphere-position sph) p) (sphere-radius sph)))
 
 (define (lat-lon-to-coords r lat lon [h 0])
   (define adj-lat (* lat (/ pi 180)))
@@ -95,8 +95,11 @@
 (define (route-call sat-map)
   '())
 
-(define test-sphere (sphere (vector 0 0 0) 12))
-(define test-segment (line-seg (vector -4 -4 -4) (vector 12 12 12)))
+(define test-sphere (sphere (vector 0 0 0) 5))
+(define test-segment (line-seg (vector -6 -6 -6) (vector 12 12 12)))
+(define test-segment2 (line-seg (vector -5 0 0) (vector 5 0 0)))
+(displayln (line-seg-intersects-sphere? test-segment test-sphere))
+(displayln (line-seg-intersects-sphere? test-segment2 test-sphere))
 
 (define satelite-points
   (call-with-input-file "data.csv"
@@ -119,7 +122,9 @@
 (define satelite-plot-connections
   (for/list ([e satelite-plot-points])
     (for/list ([os satelite-plot-points]
-               #:when (not (line-seg-intersects-sphere? (line-seg (cdr e) (cdr os)) *earth-sphere*)))
+               #:when (and
+                       (not (eqv? e os))
+                       (not (line-seg-intersects-sphere? (line-seg (cdr e) (cdr os)) *earth-sphere*))))
       (list (cdr e) (cdr os)))))
 
 (plot3d
@@ -140,6 +145,5 @@
    satelite-plot-connections))
  #:altitude 25)
 
-(displayln (line-seg-intersects-sphere? test-segment test-sphere))
 (displayln satelite-points)
 (displayln "Hello, World!")
