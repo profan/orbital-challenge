@@ -9,10 +9,9 @@
 (struct vector (x y z))
 (struct line-seg (start end))
 (struct sphere (position radius))
-(struct satelite (name longitude latitude height ecef))
 
-; holds mission data, seed, all the sats and the route
-(struct mission (seed satelites route))
+; target and destination are satelites with 0 height
+(struct satelite (name latitude longitude height ecef))
 
 ; FUNCTIONS
 
@@ -115,17 +114,20 @@
 (define satelite-points
   (call-with-input-file "data.csv"
     (lambda (in)
-      (csv-map
-       (lambda (values)
-         (match values
-           [(list seed) seed]
-           [(list name latitude longitude height)
-            (let ([lat (string->number latitude)] [lon (string->number longitude)] [h (string->number height)])
-              (displayln height)
-              (satelite name lat lon h (lat-lon-to-coords *earth-radius* lat lon h)))]
-           [(list "ROUTE" lat1 lon1 lat2 lon2)
-            (list (cons (string->number lat1) (string->number lon1)) (cons (string->number lat2) (string->number lon2)))]))
-       in))))
+      (flatten
+       (csv-map
+        (lambda (values)
+          (match values
+            [(list seed) seed]
+            [(list name latitude longitude height)
+             (let ([lat (string->number latitude)] [lon (string->number longitude)] [h (string->number height)])
+               (satelite name lat lon h (lat-lon-to-coords *earth-radius* lat lon h)))]
+            [(list "ROUTE" lat1 lon1 lat2 lon2)
+             (let ([lat1 (string->number lat1)] [lon1 (string->number lon1)][lat2 (string->number lat2)] [lon2 (string->number lon2)])
+               (cons
+                (satelite "START" lat1 lon1 1 (lat-lon-to-coords *earth-radius* lat1 lon1 1))
+                (satelite "DEST" lat2 lon2 1 (lat-lon-to-coords *earth-radius* lat2 lon2 1))))]))
+        in)))))
 
 (define satelite-graph
   (let ([graph (weighted-graph/undirected '())])
