@@ -121,6 +121,7 @@
            [(list seed) seed]
            [(list name latitude longitude height)
             (let ([lat (string->number latitude)] [lon (string->number longitude)] [h (string->number height)])
+              (displayln height)
               (satelite name lat lon h (lat-lon-to-coords *earth-radius* lat lon h)))]
            [(list "ROUTE" lat1 lon1 lat2 lon2)
             (list (cons (string->number lat1) (string->number lon1)) (cons (string->number lat2) (string->number lon2)))]))
@@ -129,7 +130,7 @@
 (define satelite-graph
   (let ([graph (weighted-graph/undirected '())])
     ; populate graph with nodes
-    (for ([s satelite-points])
+    (for ([s satelite-points] #:when (satelite? s))
       (add-vertex! graph s))
     ; connect all nodes which can reach eachother
     (for ([s1 satelite-points])
@@ -164,8 +165,8 @@
    #:alpha 0.25)
   ; draw points for satelites, with labels for the names
   (map
-   (lambda (v) (point-label3d (vector-unpack (cdr v)) (car v)))
-   satelite-plot-points)
+   (lambda (s) (point-label3d (vector-unpack (satelite-ecef s)) (satelite-name s)))
+   (get-vertices satelite-graph))
   ; draw the lines visualizing which satelites have line of sight and can communicate
   (flatten (map
    (lambda (v)
