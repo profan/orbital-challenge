@@ -9,10 +9,10 @@
 (struct vector (x y z))
 (struct line-seg (start end))
 (struct sphere (position radius))
-(struct satelite (name longitude latitude height conns))
+(struct satelite (name longitude latitude height ecef))
 
 ; holds mission data, seed, all the sats and the route
-(struct mission seed satelites route)
+(struct mission (seed satelites route))
 
 ; FUNCTIONS
 
@@ -107,6 +107,10 @@
   #f)
 
 ; CALCULATIONS AND DEFINITIONS
+  
+; geocentric coordinates, the center of the earth is origo (0 0 0)
+(define *earth-radius* 6371)
+(define *earth-sphere* (sphere (vector 0 0 0) *earth-radius*))
 
 (define satelite-points
   (call-with-input-file "data.csv"
@@ -116,14 +120,25 @@
          (match values
            [(list seed) seed]
            [(list name latitude longitude height)
-            (satelite name (string->number latitude) (string->number longitude) (string->number height) '())]
+            (let ([lat (string->number latitude)] [lon (string->number longitude)] [h (string->number height)])
+              (satelite name lat lon h (lat-lon-to-coords *earth-radius* lat lon h)))]
            [(list "ROUTE" lat1 lon1 lat2 lon2)
             (list (cons (string->number lat1) (string->number lon1)) (cons (string->number lat2) (string->number lon2)))]))
        in))))
 
-; geocentric coordinates, the center of the earth is origo (0 0 0)
-(define *earth-radius* 6371)
-(define *earth-sphere* (sphere (vector 0 0 0) *earth-radius*))
+(define satelite-graph
+  (let ([graph (weighted-graph/undirected '())])
+    ; populate graph with nodes
+    (for ([s satelite-points])
+      (add-vertex! graph s))
+    ; connect all nodes which can reach eachother
+    (for ([s1 satelite-points])
+      (for ([s2 satelite-points]
+            #:when (and (satelite? s1) (satelite? s2)
+                        (not (eqv? s1 s2)) ; don't connect to self
+                        (not (line-seg-intersects-sphere? (line-seg (satelite-ecef s1) (satelite-ecef s2)) *earth-sphere*))))
+        (add-edge! graph s1 s2 (distance-3d (satelite-ecef s1) (satelite-ecef s2)))))
+    graph))
 
 ; generate pairs of satelite name and position for drawing
 (define satelite-plot-points
