@@ -129,33 +129,21 @@
                 (satelite "DEST" lat2 lon2 1 (lat-lon-to-coords *earth-radius* lat2 lon2 1))))]))
         in)))))
 
-(define satelite-graph
+(define-values (satelite-graph satelite-lines)
   (let ([graph (weighted-graph/undirected '())])
     ; populate graph with nodes
     (for ([s satelite-points] #:when (satelite? s))
       (add-vertex! graph s))
     ; connect all nodes which can reach eachother
-    (for ([s1 satelite-points])
-      (for ([s2 satelite-points]
-            #:when (and (satelite? s1) (satelite? s2)
-                        (not (eqv? s1 s2)) ; don't connect to self
-                        (not (line-seg-intersects-sphere? (line-seg (satelite-ecef s1) (satelite-ecef s2)) *earth-sphere*))))
-        (add-edge! graph s1 s2 (distance-3d (satelite-ecef s1) (satelite-ecef s2)))))
-    graph))
-
-; generate pairs of satelite name and position for drawing
-(define satelite-plot-points
-   (for/list ([e satelite-points] #:when (satelite? e))
-     (cons (satelite-name e) (lat-lon-to-coords *earth-radius* (satelite-latitude e) (satelite-longitude e) (satelite-height e)))))
-
-; generate pairs of lines for satelites which can communicate
-(define satelite-plot-connections
-  (for/list ([e satelite-plot-points])
-    (for/list ([os satelite-plot-points]
-               #:when (and
-                       (not (eqv? e os))
-                       (not (line-seg-intersects-sphere? (line-seg (cdr e) (cdr os)) *earth-sphere*))))
-      (cons (cdr e) (cdr os)))))
+    (define lines
+      (for/list ([s1 satelite-points])
+        (for/list ([s2 satelite-points]
+                   #:when (and (satelite? s1) (satelite? s2)
+                               (not (eqv? s1 s2)) ; don't connect to self
+                               (not (line-seg-intersects-sphere? (line-seg (satelite-ecef s1) (satelite-ecef s2)) *earth-sphere*))))
+          (add-edge! graph s1 s2 (distance-3d (satelite-ecef s1) (satelite-ecef s2)))
+          (cons (satelite-ecef s1) (satelite-ecef s2)))))
+    (values graph lines)))
 
 (plot3d
  (list
@@ -170,12 +158,10 @@
    (lambda (s) (point-label3d (vector-unpack (satelite-ecef s)) (satelite-name s)))
    (get-vertices satelite-graph))
   ; draw the lines visualizing which satelites have line of sight and can communicate
-  (flatten (map
-   (lambda (v)
-     (for/list ([l v])
-       (match l
-         [(cons (struct vector (x1 y1 z1)) (struct vector (x2 y2 z2)))
-          (lines3d (list (list x1 y1 z1) (list x2 y2 z2)))])))
-   satelite-plot-connections)))
+  (for/list ([line-list satelite-lines])
+    (for/list ([line-pair line-list])
+      (match line-pair
+        [(cons (struct vector (x1 y1 z1)) (struct vector (x2 y2 z2)))
+         (lines3d (list (list x1 y1 z1) (list x2 y2 z2)))]))))
  #:title (car satelite-points)
  #:altitude 25)
