@@ -11,6 +11,9 @@
 (struct sphere (position radius))
 (struct satelite (name longitude latitude height conns))
 
+; holds mission data, seed, all the sats and the route
+(struct mission seed satelites route)
+
 ; FUNCTIONS
 
 (define (vector-op op v1 v2)
@@ -79,8 +82,12 @@
   (<= (distance-3d p (sphere-position sph)) (sphere-radius sph)))
 
 (define (lat-lon-to-coords r lat lon [h 0])
+  ; convert to radians to operate on with sin/cos since they take radians
   (define adj-lat (* lat (/ pi 180)))
   (define adj-lon (* lon (/ pi 180)))
+  ; adjust by height, since satelite position is given in the form of lat/lon/altitude
+  ;  given this, adjusting the radius of the perfect by the altitude is then equivalent
+  ;  to "raising" them above the surface of the position on the real sphere.
   (define adj-r (+ r h))
   (vector
    (* (- adj-r) (cos adj-lat) (cos adj-lon))
@@ -95,6 +102,9 @@
 
 (define (route-call sat-map)
   '())
+
+(define (dijkstra-solve graph source target)
+  #f)
 
 ; CALCULATIONS AND DEFINITIONS
 
@@ -111,14 +121,14 @@
             (list (cons (string->number lat1) (string->number lon1)) (cons (string->number lat2) (string->number lon2)))]))
        in))))
 
-; geocentric coordinates, (0 0 0) is defined as the centroid of earth
+; geocentric coordinates, the center of the earth is origo (0 0 0)
 (define *earth-radius* 6371)
 (define *earth-sphere* (sphere (vector 0 0 0) *earth-radius*))
 
 ; generate pairs of satelite name and position for drawing
 (define satelite-plot-points
    (for/list ([e satelite-points] #:when (satelite? e))
-     (cons (satelite-name e) (lat-lon-to-coords *earth-radius* (satelite-latitude e) (satelite-longitude e) (* (satelite-height e) 2)))))
+     (cons (satelite-name e) (lat-lon-to-coords *earth-radius* (satelite-latitude e) (satelite-longitude e) (satelite-height e)))))
 
 ; generate pairs of lines for satelites which can communicate
 (define satelite-plot-connections
@@ -144,10 +154,10 @@
   ; draw the lines visualizing which satelites have line of sight and can communicate
   (flatten (map
    (lambda (v)
-     (flatten (for/list ([l v])
+     (for/list ([l v])
        (match l
          [(cons (struct vector (x1 y1 z1)) (struct vector (x2 y2 z2)))
-          (lines3d (list (list x1 y1 z1) (list x2 y2 z2)))]))))
+          (lines3d (list (list x1 y1 z1) (list x2 y2 z2)))])))
    satelite-plot-connections)))
  #:title (car satelite-points)
  #:altitude 25)
