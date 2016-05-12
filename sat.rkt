@@ -91,8 +91,8 @@
   (define adj-r (+ r h))
   (vector
    (* (- adj-r) (cos adj-lat) (cos adj-lon))
-   (* adj-r (sin adj-lat))
-   (* adj-r (cos adj-lat) (sin adj-lon))))
+   (* adj-r (cos adj-lat) (sin adj-lon))
+   (* adj-r (sin adj-lat))))
 
 (define (connect-satelites graph sats)
   ; populate graph with nodes
@@ -150,6 +150,10 @@
 ; solve shortest path with dijkstras, metric uses 3d distance, not hops currently
 (define-values (costs paths) (dijkstra satelite-graph start-route))
 (define satelite-path (find-route paths start-route end-route))
+
+(printf "Satelite Path ~a \n" (car satelite-data))
+(for ([s satelite-path])
+  (displayln (satelite-name s)))
 
 (plot3d
  (list
