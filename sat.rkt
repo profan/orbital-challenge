@@ -1,8 +1,9 @@
 #lang racket
 
 (require plot)
-(require graph)
-(require csv-reading)
+(require graph) ; external package, name is graph on raco
+(require csv-reading) ; also package, name is csv-reading on raco
+(require data/heap)
 
 ; STRUCTURES
 
@@ -93,17 +94,27 @@
    (* adj-r (sin adj-lat))
    (* adj-r (cos adj-lat) (sin adj-lon))))
 
-(define (connect-satelites sats)
-  sats)
+(define (connect-satelites graph sats)
+  ; populate graph with nodes
+  (for ([s sats] #:when (satelite? s))
+    (add-vertex! graph s))
+  ; connect all nodes which can reach eachother
+  (define lines
+    (for/list ([s1 sats])
+      (for/list ([s2 sats]
+                 #:when (and (satelite? s1) (satelite? s2)
+                             (not (eqv? s1 s2)) ; don't connect to self
+                             (not (line-seg-intersects-sphere? (line-seg (satelite-ecef s1) (satelite-ecef s2)) *earth-sphere*))))
+        (add-edge! graph s1 s2 (distance-3d (satelite-ecef s1) (satelite-ecef s2)))
+        (cons (satelite-ecef s1) (satelite-ecef s2)))))
+  (values graph lines))
 
-(define (find-route sat-map)
-  '())
-
-(define (route-call sat-map)
-  '())
-
-(define (dijkstra-solve graph source target)
-  #f)
+(define (find-route route-hash start dest)
+  (let path ([cur (hash-ref route-hash dest)] [route (list dest)])
+    (define next (hash-ref route-hash cur))
+    (if (and (not (eq? next #f)))
+      (path next (append (list next) route))
+      route)))
 
 ; CALCULATIONS AND DEFINITIONS
   
@@ -111,7 +122,7 @@
 (define *earth-radius* 6371)
 (define *earth-sphere* (sphere (vector 0 0 0) *earth-radius*))
 
-(define satelite-points
+(define satelite-data
   (call-with-input-file "data.csv"
     (lambda (in)
       (flatten
@@ -130,20 +141,15 @@
         in)))))
 
 (define-values (satelite-graph satelite-lines)
-  (let ([graph (weighted-graph/undirected '())])
-    ; populate graph with nodes
-    (for ([s satelite-points] #:when (satelite? s))
-      (add-vertex! graph s))
-    ; connect all nodes which can reach eachother
-    (define lines
-      (for/list ([s1 satelite-points])
-        (for/list ([s2 satelite-points]
-                   #:when (and (satelite? s1) (satelite? s2)
-                               (not (eqv? s1 s2)) ; don't connect to self
-                               (not (line-seg-intersects-sphere? (line-seg (satelite-ecef s1) (satelite-ecef s2)) *earth-sphere*))))
-          (add-edge! graph s1 s2 (distance-3d (satelite-ecef s1) (satelite-ecef s2)))
-          (cons (satelite-ecef s1) (satelite-ecef s2)))))
-    (values graph lines)))
+  (connect-satelites (weighted-graph/undirected '()) satelite-data))
+
+(define-values (start-route end-route)
+  (let [(revd (reverse satelite-data))]
+    (values (second revd) (first revd))))
+
+; solve shortest path with dijkstras, metric uses 3d distance, not hops currently
+(define-values (costs paths) (dijkstra satelite-graph start-route))
+(define satelite-path (find-route paths start-route end-route))
 
 (plot3d
  (list
@@ -162,6 +168,13 @@
     (for/list ([line-pair line-list])
       (match line-pair
         [(cons (struct vector (x1 y1 z1)) (struct vector (x2 y2 z2)))
-         (lines3d (list (list x1 y1 z1) (list x2 y2 z2)))]))))
- #:title (car satelite-points)
+         (lines3d (list (list x1 y1 z1) (list x2 y2 z2)) #:alpha 0.25)])))
+  ; draw the lines for the path taken, if any
+  (lines3d
+   (map
+    (lambda (s)
+      (vector-unpack (satelite-ecef s)))
+    satelite-path)
+   #:color "green"))
+ #:title (car satelite-data)
  #:altitude 25)
