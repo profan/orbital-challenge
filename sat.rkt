@@ -4,6 +4,7 @@
 (require graph) ; external package, name is graph on raco
 (require csv-reading) ; also package, name is csv-reading on raco
 (require data/heap)
+ 
 
 ; STRUCTURES
 
@@ -13,6 +14,11 @@
 
 ; target and destination are satelites with 0 height
 (struct satelite (name latitude longitude height ecef))
+
+; CONSTANTS
+
+(define *earth-radius* 6371)
+(define *earth-sphere* (sphere (vector 0 0 0) *earth-radius*))
 
 ; FUNCTIONS
 
@@ -117,10 +123,6 @@
       route)))
 
 ; CALCULATIONS AND DEFINITIONS
-  
-; geocentric coordinates, the center of the earth is origo (0 0 0)
-(define *earth-radius* 6371)
-(define *earth-sphere* (sphere (vector 0 0 0) *earth-radius*))
 
 (define satelite-data
   (call-with-input-file "data.csv"
