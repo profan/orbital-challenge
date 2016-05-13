@@ -113,7 +113,7 @@
   (let path ([cur (hash-ref route-hash dest)] [route (list dest)])
     (define next (hash-ref route-hash cur))
     (if (and (not (eq? next #f)))
-      (path next (append (list next) route))
+      (path next (append (list cur) route))
       route)))
 
 ; CALCULATIONS AND DEFINITIONS
@@ -136,8 +136,8 @@
             [(list "ROUTE" lat1 lon1 lat2 lon2)
              (let ([lat1 (string->number lat1)] [lon1 (string->number lon1)][lat2 (string->number lat2)] [lon2 (string->number lon2)])
                (cons
-                (satelite "START" lat1 lon1 1 (lat-lon-to-coords *earth-radius* lat1 lon1 1))
-                (satelite "DEST" lat2 lon2 1 (lat-lon-to-coords *earth-radius* lat2 lon2 1))))]))
+                (satelite "START" lat1 lon1 1 (lat-lon-to-coords *earth-radius* lat1 lon1 0))
+                (satelite "DEST" lat2 lon2 1 (lat-lon-to-coords *earth-radius* lat2 lon2 0))))]))
         in)))))
 
 (define-values (satelite-graph satelite-lines)
