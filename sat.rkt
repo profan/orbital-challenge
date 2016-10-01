@@ -3,8 +3,6 @@
 (require plot)
 (require graph) ; external package, name is graph on raco
 (require csv-reading) ; also package, name is csv-reading on raco
-(require data/heap)
- 
 
 ; STRUCTURES
 
@@ -110,7 +108,9 @@
       (for/list ([s2 sats]
                  #:when (and (satelite? s1) (satelite? s2)
                              (not (eqv? s1 s2)) ; don't connect to self
-                             (not (line-seg-intersects-sphere? (line-seg (satelite-ecef s1) (satelite-ecef s2)) *earth-sphere*))))
+                             (not (line-seg-intersects-sphere?
+                                   (line-seg (satelite-ecef s1) (satelite-ecef s2))
+                                   *earth-sphere*))))
         (add-edge! graph s1 s2 (distance-3d (satelite-ecef s1) (satelite-ecef s2)))
         (cons (satelite-ecef s1) (satelite-ecef s2)))))
   (values graph lines))
@@ -123,7 +123,6 @@
       route)))
 
 ; CALCULATIONS AND DEFINITIONS
-
 (define satelite-data
   (call-with-input-file "data.csv"
     (lambda (in)
@@ -133,10 +132,13 @@
           (match values
             [(list seed) seed]
             [(list name latitude longitude height)
-             (let ([lat (string->number latitude)] [lon (string->number longitude)] [h (string->number height)])
+             (let ([lat (string->number latitude)]
+                   [lon (string->number longitude)]
+                   [h (string->number height)])
                (satelite name lat lon h (lat-lon-to-coords *earth-radius* lat lon h)))]
             [(list "ROUTE" lat1 lon1 lat2 lon2)
-             (let ([lat1 (string->number lat1)] [lon1 (string->number lon1)][lat2 (string->number lat2)] [lon2 (string->number lon2)])
+             (let ([lat1 (string->number lat1)] [lon1 (string->number lon1)]
+                   [lat2 (string->number lat2)] [lon2 (string->number lon2)])
                (cons
                 (satelite "START" lat1 lon1 1 (lat-lon-to-coords *earth-radius* lat1 lon1 0))
                 (satelite "DEST" lat2 lon2 1 (lat-lon-to-coords *earth-radius* lat2 lon2 0))))]))
@@ -166,9 +168,8 @@
    (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius*
    #:alpha 0.25)
   ; draw points for satelites, with labels for the names
-  (map
-   (lambda (s) (point-label3d (vector-unpack (satelite-ecef s)) (satelite-name s)))
-   (get-vertices satelite-graph))
+  (for/list ([sat (get-vertices satelite-graph)])
+    (point-label3d (vector-unpack (satelite-ecef sat)) (satelite-name sat)))
   ; draw the lines visualizing which satelites have line of sight and can communicate
   (for/list ([line-list satelite-lines])
     (for/list ([line-pair line-list])
@@ -177,10 +178,8 @@
          (lines3d (list (list x1 y1 z1) (list x2 y2 z2)) #:alpha 0.25)])))
   ; draw the lines for the path taken, if any
   (lines3d
-   (map
-    (lambda (s)
-      (vector-unpack (satelite-ecef s)))
-    satelite-path)
+   (for/list ([sat satelite-path])
+     (vector-unpack (satelite-ecef sat)))
    #:color "green"))
  #:title (car satelite-data)
  #:altitude 25)
