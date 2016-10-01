@@ -123,6 +123,7 @@
       route)))
 
 ; CALCULATIONS AND DEFINITIONS
+
 (define satelite-data
   (call-with-input-file "data.csv"
     (lambda (in)
