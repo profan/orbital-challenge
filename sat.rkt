@@ -73,7 +73,7 @@
      (vector-op
       + (line-seg-start l)
       (vector-unop
-       (lambda (v) (* frac-of-line v))
+       (λ (v) (* frac-of-line v))
        (vector-op - (line-seg-end l) (line-seg-start l))))]))
 
 (define (line-seg-intersects-sphere? l sph)
@@ -126,10 +126,10 @@
 
 (define satelite-data
   (call-with-input-file "data.csv"
-    (lambda (in)
+    (λ (in)
       (flatten
        (csv-map
-        (lambda (values)
+        (λ (values)
           (match values
             [(list seed) seed]
             [(list name latitude longitude height)
@@ -164,7 +164,7 @@
  (list
   ; draw earth sphere
   (isosurface3d
-   (lambda (x y z)
+   (λ (x y z)
     (sqrt (+ (sqr x) (sqr y) (sqr z)))) *earth-radius*
    (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius* (- *earth-radius*) *earth-radius*
    #:alpha 0.25)
